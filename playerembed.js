@@ -1,149 +1,104 @@
-document.addEventListener("DOMContentLoaded", function() {
-            const servers = [
-                { name: "Server 1", embed: "https://example.com/embed1" },
-                { name: "Server 2", embed: "https://example.com/embed2" },
-                { name: "Server 3", embed: "https://example.com/embed3" }
-            ];
+// Fungsi cek apakah string base64 valid
+    function isBase64(str) {
+      if (!str || str.length === 0) return false;
+      // regex base64 standar tanpa padding
+      const base64regex = /^[A-Za-z0-9+/]+={0,2}$/;
+      if (!base64regex.test(str)) return false;
+      try {
+        return btoa(atob(str)) === str;
+      } catch (e) {
+        return false;
+      }
+    }
 
-            const serverList = document.getElementById('serverList');
-            const iframe = document.querySelector("#pembed iframe");
-            const playerLoad = document.querySelector(".playerload");
-            let currentServerIndex = 0;
+    // Fungsi ambil param URL by name
+    function getParameterByName(name, url = window.location.href) {
+      name = name.replace(/[\[\]]/g, '\\$&');
+      const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+      const results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
 
-            function loadServer(index) {
-                if (index >= servers.length) {
-                    playerLoad.style.display = "none";
-                    alert("All servers failed to load. Please try again later.");
-                    return;
-                }
+    // Parsing parameter video sesuai skenario campuran base64 dan URL biasa yang dipisah koma
+    function parseVideoParam(videoParam) {
+      if (!videoParam) return [];
 
-                const embedURL = servers[index].embed;
-                playerLoad.style.display = "block";  // Show loading animation
-                iframe.src = embedURL;
+      // split parameter video berdasarkan koma, setiap bagian merupakan URL atau base64 encoded URL
+      const parts = videoParam.split(',');
 
-                iframe.onload = function() {
-                    playerLoad.style.display = "none";  // Hide loading animation when iframe loads
-                };
+      const urls = parts.map(part => {
+        part = part.trim();
 
-                iframe.onerror = function() {
-                    playerLoad.style.display = "none";  // Hide loading animation if iframe fails to load
-                    alert(`Failed to load ${servers[index].name}. Trying next server...`);
-                    loadServer(index + 1);  // Try next server
-                };
+        // jika sudah berbentuk URL (http atau https), langsung return
+        if (part.startsWith('http://') || part.startsWith('https://')) {
+          return part;
+        }
 
-                document.querySelectorAll('.DagPlayOpt').forEach(opt => opt.classList.remove('on'));
-                serverList.children[index].firstChild.classList.add('on');
-                currentServerIndex = index;
-            }
+        // jika base64 valid, decode dulu
+        if (isBase64(part)) {
+          try {
+            return atob(part);
+          } catch {
+            return part; // fallback jika gagal decode
+          }
+        }
+        // fallback, return string apa adanya
+        return part;
+      });
 
-            function getParameterByName(name, url = window.location.href) {
-                name = name.replace(/[\[\]]/g, '\\$&');
-                const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
-                    results = regex.exec(url);
-                if (!results) return null;
-                if (!results[2]) return '';
-                return decodeURIComponent(results[2].replace(/\+/g, ' '));
-            }
+      // filter hapus string kosong dan hanya url valid minimal http/https
+      return urls.filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
+    }
 
-            function decodeBase64(str) {
-                try {
-                    return atob(str);
-                } catch (e) {
-                    return str;
-                }
-            }
+    document.addEventListener("DOMContentLoaded", () => {
+      const serverListEl = document.getElementById('serverList');
+      const iframe = document.querySelector('#pembed iframe');
 
-            const embedParam = getParameterByName('embed');
-            if (embedParam) {
-                // Decode base64 if necessary
-                const decodedEmbedParam = decodeBase64(embedParam);
-                // Split the embed parameter by commas to handle multiple embed URLs
-                const embedUrls = decodedEmbedParam.split(',');
-                if (embedUrls.length > 1) {
-                    // Generate server options from embed URLs
-                    embedUrls.forEach((url, index) => {
-                        const li = document.createElement('li');
-                        const div = document.createElement('div');
-                        div.className = 'DagPlayOpt';
-                        div.dataset.embed = url;
-                        div.innerHTML = `<i class="fas fa-play"></i> <span>Server ${index + 1}</span>`;
-                        li.appendChild(div);
-                        serverList.appendChild(li);
+      // Ambil param video dari URL
+      const videoParam = getParameterByName('video');
+      const urls = parseVideoParam(videoParam);
 
-                        div.addEventListener('click', function() {
-                            loadServerFromUrl(url);
-                        });
+      if (urls.length === 0) {
+        serverListEl.innerHTML = '<li>Tidak ditemukan URL video yang valid.</li>';
+        iframe.src = '';
+        return;
+      }
 
-                        // Trigger click on the first server option
-                        if (index === 0) {
-                            div.click();
-                        }
-                    });
-                } else {
-                    // Single embed URL
-                    playerLoad.style.display = "block";  // Show loading animation
-                    iframe.src = embedUrls[0];
+      // Membuat tombol server dari urls array
+      urls.forEach((url, index) => {
+        const li = document.createElement('li');
+        // Label tombol menampilkan nomor server dan domain host URL agar jelas
+        let label = `Server ${index + 1}`;
+        try {
+          const urlObj = new URL(url);
+          label += ` (${urlObj.hostname.replace('www.', '')})`;
+        } catch {}
+        li.textContent = label;
+        li.setAttribute('role', 'button');
+        li.setAttribute('tabindex', '0');
+        li.style.userSelect = 'none';
 
-                    iframe.onload = function() {
-                        playerLoad.style.display = "none";  // Hide loading animation when iframe loads
-                    };
-
-                    iframe.onerror = function() {
-                        playerLoad.style.display = "none";  // Hide loading animation if iframe fails to load
-                        alert("Failed to load the video from the provided URL.");
-                    };
-                }
-            } else {
-                // Generate server options from predefined servers
-                servers.forEach((server, index) => {
-                    const li = document.createElement('li');
-                    const div = document.createElement('div');
-                    div.className = 'DagPlayOpt';
-                    div.dataset.embed = server.embed;
-                    div.innerHTML = `<i class="fas fa-play"></i> <span>${server.name}</span>`;
-                    li.appendChild(div);
-                    serverList.appendChild(li);
-
-                    div.addEventListener('click', function() {
-                        loadServer(index);
-                    });
-
-                    // Trigger click on the first server option
-                    if (index === 0) {
-                        div.click();
-                    }
-                });
-            }
-
-            function loadServerFromUrl(url) {
-                playerLoad.style.display = "block";  // Show loading animation
-                iframe.src = url;
-
-                iframe.onload = function() {
-                    playerLoad.style.display = "none";  // Hide loading animation when iframe loads
-                };
-
-                iframe.onerror = function() {
-                    playerLoad.style.display = "none";  // Hide loading animation if iframe fails to load
-                    alert("Failed to load the video from the provided URL.");
-                };
-
-                document.querySelectorAll('.DagPlayOpt').forEach(opt => opt.classList.remove('on'));
-                const currentOption = document.querySelector(`.DagPlayOpt[data-embed="${url}"]`);
-                if (currentOption) {
-                    currentOption.classList.add('on');
-                }
-            }
-
-            // Function to update time in WIB
-            function updateTime() {
-                const now = new Date();
-                const options = { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                const timeString = now.toLocaleTimeString('en-GB', options);
-                document.getElementById('timeDisplay').textContent = `${timeString} WIB`;
-            }
-
-            // Update time every second
-            setInterval(updateTime, 1000);
-            updateTime();  // Initial call to set time immediately
+        // Event klik pilih server dan load iframe
+        li.addEventListener('click', () => {
+          iframe.src = url;
+          // Highlight active server
+          document.querySelectorAll('#serverList li').forEach(el => el.classList.remove('active'));
+          li.classList.add('active');
         });
+
+        // Support keyboard enter/space to activate server button
+        li.addEventListener('keydown', (evt) => {
+          if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            li.click();
+          }
+        });
+
+        serverListEl.appendChild(li);
+      });
+
+      // Auto klik server pertama supaya iframe langsung muncul
+      serverListEl.firstChild.click();
+    });
