@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const servers = [{
+    const serversDefault = [{
             name: "Server 1",
             embed: "https://example.com/embed1"
         },
@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const iframe = document.querySelector("#pembed iframe");
     const playerLoad = document.querySelector(".playerload");
     let currentServerIndex = 0;
+    let servers = [];
 
     function loadServer(index) {
         if (index >= servers.length) {
@@ -40,7 +41,9 @@ document.addEventListener("DOMContentLoaded", function() {
         };
 
         document.querySelectorAll('.DagPlayOpt').forEach(opt => opt.classList.remove('on'));
-        serverList.children[index].firstChild.classList.add('on');
+        if (serverList.children[index]) {
+            serverList.children[index].firstChild.classList.add('on');
+        }
         currentServerIndex = index;
     }
 
@@ -61,43 +64,56 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
+    function buildServerListFromUrls(urls) {
+        urls.forEach((url, index) => {
+            const li = document.createElement('li');
+            const div = document.createElement('div');
+            div.className = 'DagPlayOpt';
+            div.dataset.embed = url;
+            div.innerHTML = `<i class="fas fa-play"></i> <span>Server ${index + 1}</span>`;
+            li.appendChild(div);
+            serverList.appendChild(li);
+
+            div.addEventListener('click', function() {
+                loadServer(index);
+            });
+        });
+    }
+
+    // Main logic to populate servers and build UI
     const embedParam = getParameterByName('embed');
     if (embedParam) {
         const decodedEmbedParam = decodeBase64(embedParam);
-        const embedUrls = decodedEmbedParam.split(',');
-        if (embedUrls.length > 1) {
-            embedUrls.forEach((url, index) => {
+        const embedUrls = decodedEmbedParam.split(',').map(u => u.trim()).filter(u => u);
+        if (embedUrls.length > 0) {
+            servers = embedUrls.map((url, idx) => ({
+                name: `Server ${idx + 1}`,
+                embed: url
+            }));
+            buildServerListFromUrls(embedUrls);
+            loadServer(0);
+        } else {
+            // fallback to default servers if no valid URLs
+            servers = serversDefault;
+            serversDefault.forEach((server, index) => {
                 const li = document.createElement('li');
                 const div = document.createElement('div');
                 div.className = 'DagPlayOpt';
-                div.dataset.embed = url;
-                div.innerHTML = `<i class="fas fa-play"></i> <span>Server ${index + 1}</span>`;
+                div.dataset.embed = server.embed;
+                div.innerHTML = `<i class="fas fa-play"></i> <span>${server.name}</span>`;
                 li.appendChild(div);
                 serverList.appendChild(li);
 
                 div.addEventListener('click', function() {
-                    loadServerFromUrl(url);
+                    loadServer(index);
                 });
-
-                if (index === 0) {
-                    div.click();
-                }
             });
-        } else {
-            playerLoad.style.display = "block";
-            iframe.src = embedUrls[0];
-
-            iframe.onload = function() {
-                playerLoad.style.display = "none";
-            };
-
-            iframe.onerror = function() {
-                playerLoad.style.display = "none";
-                alert("Failed to load the video from the provided URL.");
-            };
+            loadServer(0);
         }
     } else {
-        servers.forEach((server, index) => {
+        // No embed parameter present: use default servers
+        servers = serversDefault;
+        serversDefault.forEach((server, index) => {
             const li = document.createElement('li');
             const div = document.createElement('div');
             div.className = 'DagPlayOpt';
@@ -109,31 +125,8 @@ document.addEventListener("DOMContentLoaded", function() {
             div.addEventListener('click', function() {
                 loadServer(index);
             });
-
-            if (index === 0) {
-                div.click();
-            }
         });
-    }
-
-    function loadServerFromUrl(url) {
-        playerLoad.style.display = "block";
-        iframe.src = url;
-
-        iframe.onload = function() {
-            playerLoad.style.display = "none";
-        };
-
-        iframe.onerror = function() {
-            playerLoad.style.display = "none";
-            alert("Failed to load the video from the provided URL.");
-        };
-
-        document.querySelectorAll('.DagPlayOpt').forEach(opt => opt.classList.remove('on'));
-        const currentOption = document.querySelector(`.DagPlayOpt[data-embed="${url}"]`);
-        if (currentOption) {
-            currentOption.classList.add('on');
-        }
+        loadServer(0);
     }
 
     function updateTime() {
