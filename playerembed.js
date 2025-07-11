@@ -26,17 +26,17 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         const embedURL = servers[index].embed;
-        playerLoad.style.display = "block"; // Show loading animation
+        playerLoad.style.display = "block";
         iframe.src = embedURL;
 
         iframe.onload = function() {
-            playerLoad.style.display = "none"; // Hide loading animation when iframe loads
+            playerLoad.style.display = "none";
         };
 
         iframe.onerror = function() {
-            playerLoad.style.display = "none"; // Hide loading animation if iframe fails to load
+            playerLoad.style.display = "none";
             alert(`Failed to load ${servers[index].name}. Trying next server...`);
-            loadServer(index + 1); // Try next server
+            loadServer(index + 1);
         };
 
         document.querySelectorAll('.DagPlayOpt').forEach(opt => opt.classList.remove('on'));
@@ -63,12 +63,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const embedParam = getParameterByName('embed');
     if (embedParam) {
-        // Decode base64 if necessary
         const decodedEmbedParam = decodeBase64(embedParam);
-        // Split the embed parameter by commas to handle multiple embed URLs
         const embedUrls = decodedEmbedParam.split(',');
         if (embedUrls.length > 1) {
-            // Generate server options from embed URLs
             embedUrls.forEach((url, index) => {
                 const li = document.createElement('li');
                 const div = document.createElement('div');
@@ -82,27 +79,24 @@ document.addEventListener("DOMContentLoaded", function() {
                     loadServerFromUrl(url);
                 });
 
-                // Trigger click on the first server option
                 if (index === 0) {
                     div.click();
                 }
             });
         } else {
-            // Single embed URL
-            playerLoad.style.display = "block"; // Show loading animation
+            playerLoad.style.display = "block";
             iframe.src = embedUrls[0];
 
             iframe.onload = function() {
-                playerLoad.style.display = "none"; // Hide loading animation when iframe loads
+                playerLoad.style.display = "none";
             };
 
             iframe.onerror = function() {
-                playerLoad.style.display = "none"; // Hide loading animation if iframe fails to load
+                playerLoad.style.display = "none";
                 alert("Failed to load the video from the provided URL.");
             };
         }
     } else {
-        // Generate server options from predefined servers
         servers.forEach((server, index) => {
             const li = document.createElement('li');
             const div = document.createElement('div');
@@ -116,7 +110,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 loadServer(index);
             });
 
-            // Trigger click on the first server option
             if (index === 0) {
                 div.click();
             }
@@ -124,15 +117,15 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function loadServerFromUrl(url) {
-        playerLoad.style.display = "block"; // Show loading animation
+        playerLoad.style.display = "block";
         iframe.src = url;
 
         iframe.onload = function() {
-            playerLoad.style.display = "none"; // Hide loading animation when iframe loads
+            playerLoad.style.display = "none";
         };
 
         iframe.onerror = function() {
-            playerLoad.style.display = "none"; // Hide loading animation if iframe fails to load
+            playerLoad.style.display = "none";
             alert("Failed to load the video from the provided URL.");
         };
 
@@ -143,7 +136,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // Function to update time in WIB
     function updateTime() {
         const now = new Date();
         const options = {
@@ -153,10 +145,9 @@ document.addEventListener("DOMContentLoaded", function() {
             second: '2-digit'
         };
         const timeString = now.toLocaleTimeString('en-GB', options);
-        document.getElementById('timeDisplay').textContent = `${timeString} WIB`;
+        document.getElementById('timeDisplay').textContent = `Waktu Jakarta: ${timeString}`;
     }
 
-    // Update time every second
     setInterval(updateTime, 1000);
-    updateTime(); // Initial call to set time immediately
+    updateTime();
 });
